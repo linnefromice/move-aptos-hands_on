@@ -14,6 +14,12 @@ module handson::pool {
         });
     }
 
+    public entry fun deposit(account: &signer, amount: u64) acquires Pool {
+        let coin = coin::withdraw<HandsonCoin>(account, amount);
+        let pool_ref = borrow_global_mut<Pool>(@handson);
+        coin::merge(&mut pool_ref.balance, coin);
+    }
+
     #[test(owner = @handson)]
     fun test_initialize(owner: &signer) {
         initialize(owner);
@@ -24,5 +30,10 @@ module handson::pool {
     fun test_initialize_twice(owner: &signer) {
         initialize(owner);
         initialize(owner);
+    }
+    #[test(owner = @handson, account = @0x111)]
+    fun test_deposit(owner: &signer, account: &signer) acquires Pool {
+        initialize(owner);
+        deposit(account, 100);
     }
 }
