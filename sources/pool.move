@@ -1,6 +1,7 @@
 module handson::pool {
     use std::signer;
     use aptos_framework::coin;
+    use aptos_framework::managed_coin;
 
     struct HandsonCoin {}
     struct Pool has key {
@@ -12,6 +13,17 @@ module handson::pool {
         move_to(owner, Pool {
             balance: coin::zero<HandsonCoin>()
         });
+        managed_coin::initialize<HandsonCoin>(
+            owner,
+            b"Handson Coin",
+            b"HANDSON",
+            0,
+            false
+        );
+    }
+
+    public entry fun register(account: &signer) {
+        coin::register<HandsonCoin>(account);
     }
 
     public entry fun deposit(account: &signer, amount: u64) acquires Pool {
@@ -20,6 +32,8 @@ module handson::pool {
         coin::merge(&mut pool_ref.balance, coin);
     }
 
+    #[test_only]
+    use aptos_framework::account;
     #[test(owner = @handson)]
     fun test_initialize(owner: &signer) {
         initialize(owner);
@@ -33,7 +47,13 @@ module handson::pool {
     }
     #[test(owner = @handson, account = @0x111)]
     fun test_deposit(owner: &signer, account: &signer) acquires Pool {
+        let account_addr = signer::address_of(account);
+        account::create_account_for_test(account_addr);
+
         initialize(owner);
+        register(account);
+
+        managed_coin::mint<HandsonCoin>(owner, account_addr, 100);
         deposit(account, 100);
     }
 }
