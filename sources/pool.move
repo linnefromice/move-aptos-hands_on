@@ -50,13 +50,17 @@ module handson::pool {
         initialize(owner);
         initialize(owner);
     }
-    #[test(owner = @handson, account = @0x111)]
-    fun test_deposit(owner: &signer, account: &signer) acquires Pool {
-        let account_addr = signer::address_of(account);
-        account::create_account_for_test(account_addr);
+    #[test_only]
+    fun setup(owner: &signer, account: &signer) {
+        account::create_account_for_test(signer::address_of(account));
 
         initialize(owner);
         register(account);
+    }
+    #[test(owner = @handson, account = @0x111)]
+    fun test_deposit(owner: &signer, account: &signer) acquires Pool {
+        setup(owner, account);
+        let account_addr = signer::address_of(account);
 
         managed_coin::mint<HandsonCoin>(owner, account_addr, 100);
         deposit(account, 100);
@@ -66,11 +70,8 @@ module handson::pool {
     }
     #[test(owner = @handson, account = @0x111)]
     fun test_withdraw(owner: &signer, account: &signer) acquires Pool {
+        setup(owner, account);
         let account_addr = signer::address_of(account);
-        account::create_account_for_test(account_addr);
-
-        initialize(owner);
-        register(account);
 
         managed_coin::mint<HandsonCoin>(owner, account_addr, 100);
         deposit(account, 100);
