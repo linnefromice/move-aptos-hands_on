@@ -55,5 +55,8 @@ module handson::pool {
 
         managed_coin::mint<HandsonCoin>(owner, account_addr, 100);
         deposit(account, 100);
+
+        assert!(coin::value(&borrow_global<Pool>(signer::address_of(owner)).balance) == 100, 0);
+        assert!(coin::balance<HandsonCoin>(account_addr) == 0, 0);
     }
 }
