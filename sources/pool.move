@@ -32,6 +32,11 @@ module handson::pool {
         coin::merge(&mut pool_ref.balance, coin);
     }
 
+    public entry fun withdraw(account: &signer, amount: u64) acquires Pool {
+        let coin = coin::extract(&mut borrow_global_mut<Pool>(@handson).balance, amount);
+        coin::deposit(signer::address_of(account), coin)
+    }
+
     #[test_only]
     use aptos_framework::account;
     #[test(owner = @handson)]
@@ -58,5 +63,21 @@ module handson::pool {
 
         assert!(coin::value(&borrow_global<Pool>(signer::address_of(owner)).balance) == 100, 0);
         assert!(coin::balance<HandsonCoin>(account_addr) == 0, 0);
+    }
+    #[test(owner = @handson, account = @0x111)]
+    fun test_withdraw(owner: &signer, account: &signer) acquires Pool {
+        let account_addr = signer::address_of(account);
+        account::create_account_for_test(account_addr);
+
+        initialize(owner);
+        register(account);
+
+        managed_coin::mint<HandsonCoin>(owner, account_addr, 100);
+        deposit(account, 100);
+
+        withdraw(account, 75);
+
+        assert!(coin::value(&borrow_global<Pool>(signer::address_of(owner)).balance) == 25, 0);
+        assert!(coin::balance<HandsonCoin>(account_addr) == 75, 0);
     }
 }
