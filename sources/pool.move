@@ -58,11 +58,14 @@ module handson::pool {
         coin::deposit(signer::address_of(account), lpcoin);
     }
 
-    public entry fun withdraw(account: &signer, amount: u64) acquires Pool {
+    public entry fun withdraw(account: &signer, amount: u64) acquires Pool, CapabilitiesForLp {
         let coin = coin::extract(&mut borrow_global_mut<Pool>(@handson).balance, amount);
-        coin::deposit(signer::address_of(account), coin)
+        coin::deposit(signer::address_of(account), coin);
 
-        // TODO: for lpcoin
+        // for lpcoin
+        let lpcoin = coin::withdraw<LpHandsonCoin>(account, amount);
+        let cap = &borrow_global<CapabilitiesForLp>(@handson).burn_cap;
+        coin::burn(lpcoin, cap);
     }
 
     #[test_only]
@@ -109,5 +112,6 @@ module handson::pool {
 
         assert!(coin::value(&borrow_global<Pool>(signer::address_of(owner)).balance) == 25, 0);
         assert!(coin::balance<HandsonCoin>(account_addr) == 75, 0);
+        assert!(coin::balance<LpHandsonCoin>(account_addr) == 25, 0);
     }
 }
