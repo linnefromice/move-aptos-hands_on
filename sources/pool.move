@@ -31,8 +31,14 @@ module handson::pool {
         withdraw_event: event::EventHandle<WithdrawEvent>,
     }
 
+    fun owner(): address {
+        @handson
+    }
+
     public entry fun initialize(owner: &signer) {
-        assert!(!exists<Pool>(signer::address_of(owner)), 1);
+        let owner_addr = signer::address_of(owner);
+        assert!(owner_addr == owner(), 1);
+        assert!(!exists<Pool>(signer::address_of(owner)), 2);
         move_to(owner, Pool {
             balance: coin::zero<HandsonCoin>()
         });
@@ -68,16 +74,16 @@ module handson::pool {
 
     public entry fun deposit(account: &signer, amount: u64) acquires Pool, CapabilitiesForLp, PoolEventHandle {
         let coin = coin::withdraw<HandsonCoin>(account, amount);
-        let pool_ref = borrow_global_mut<Pool>(@handson);
+        let pool_ref = borrow_global_mut<Pool>(owner());
         coin::merge(&mut pool_ref.balance, coin);
 
         // for lpcoin
-        let cap = &borrow_global<CapabilitiesForLp>(@handson).mint_cap;
+        let cap = &borrow_global<CapabilitiesForLp>(owner()).mint_cap;
         let lpcoin = coin::mint(amount, cap);
         coin::deposit(signer::address_of(account), lpcoin);
 
         event::emit_event<DepositEvent>(
-            &mut borrow_global_mut<PoolEventHandle>(@handson).deposit_event,
+            &mut borrow_global_mut<PoolEventHandle>(owner()).deposit_event,
             DepositEvent {
                 caller: signer::address_of(account),
                 amount,
@@ -86,16 +92,16 @@ module handson::pool {
     }
 
     public entry fun withdraw(account: &signer, amount: u64) acquires Pool, CapabilitiesForLp, PoolEventHandle {
-        let coin = coin::extract(&mut borrow_global_mut<Pool>(@handson).balance, amount);
+        let coin = coin::extract(&mut borrow_global_mut<Pool>(owner()).balance, amount);
         coin::deposit(signer::address_of(account), coin);
 
         // for lpcoin
         let lpcoin = coin::withdraw<LpHandsonCoin>(account, amount);
-        let cap = &borrow_global<CapabilitiesForLp>(@handson).burn_cap;
+        let cap = &borrow_global<CapabilitiesForLp>(owner()).burn_cap;
         coin::burn(lpcoin, cap);
 
         event::emit_event<WithdrawEvent>(
-            &mut borrow_global_mut<PoolEventHandle>(@handson).withdraw_event,
+            &mut borrow_global_mut<PoolEventHandle>(owner()).withdraw_event,
             WithdrawEvent {
                 caller: signer::address_of(account),
                 amount,
@@ -111,8 +117,13 @@ module handson::pool {
         initialize(owner);
         assert!(exists<Pool>(signer::address_of(owner)), 0);
     }
-    #[test(owner = @handson)]
+    #[test(account = @0x111)]
     #[expected_failure(abort_code = 1)]
+    fun test_initialize_by_not_owner(account: &signer) {
+        initialize(account);
+    }
+    #[test(owner = @handson)]
+    #[expected_failure(abort_code = 2)]
     fun test_initialize_twice(owner: &signer) {
         account::create_account_for_test(signer::address_of(owner));
         initialize(owner);
