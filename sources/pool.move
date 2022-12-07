@@ -1,9 +1,17 @@
 module handson::pool {
+    use std::string;
     use std::signer;
     use aptos_framework::coin;
     use aptos_framework::managed_coin;
 
     struct HandsonCoin {}
+    struct LpHandsonCoin {}
+    struct CapabilitiesForLp has key {
+        burn_cap: coin::BurnCapability<LpHandsonCoin>,
+        freeze_cap: coin::FreezeCapability<LpHandsonCoin>,
+        mint_cap: coin::MintCapability<LpHandsonCoin>,
+    }
+
     struct Pool has key {
         balance: coin::Coin<HandsonCoin>
     }
@@ -20,21 +28,38 @@ module handson::pool {
             0,
             false
         );
+        let (burn_cap, freeze_cap, mint_cap) = coin::initialize<LpHandsonCoin>(
+            owner,
+            string::utf8(b"Lp Handson Coin"),
+            string::utf8(b"LPHANDSON"),
+            0,
+            false
+        );
+        move_to(owner, CapabilitiesForLp {
+            burn_cap,
+            freeze_cap,
+            mint_cap,
+        });
     }
 
     public entry fun register(account: &signer) {
         coin::register<HandsonCoin>(account);
+        coin::register<LpHandsonCoin>(account);
     }
 
     public entry fun deposit(account: &signer, amount: u64) acquires Pool {
         let coin = coin::withdraw<HandsonCoin>(account, amount);
         let pool_ref = borrow_global_mut<Pool>(@handson);
         coin::merge(&mut pool_ref.balance, coin);
+
+        // TODO: for lpcoin
     }
 
     public entry fun withdraw(account: &signer, amount: u64) acquires Pool {
         let coin = coin::extract(&mut borrow_global_mut<Pool>(@handson).balance, amount);
         coin::deposit(signer::address_of(account), coin)
+
+        // TODO: for lpcoin
     }
 
     #[test_only]
