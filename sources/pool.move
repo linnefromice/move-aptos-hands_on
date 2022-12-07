@@ -47,12 +47,15 @@ module handson::pool {
         coin::register<LpHandsonCoin>(account);
     }
 
-    public entry fun deposit(account: &signer, amount: u64) acquires Pool {
+    public entry fun deposit(account: &signer, amount: u64) acquires Pool, CapabilitiesForLp {
         let coin = coin::withdraw<HandsonCoin>(account, amount);
         let pool_ref = borrow_global_mut<Pool>(@handson);
         coin::merge(&mut pool_ref.balance, coin);
 
-        // TODO: for lpcoin
+        // for lpcoin
+        let cap = &borrow_global<CapabilitiesForLp>(@handson).mint_cap;
+        let lpcoin = coin::mint(amount, cap);
+        coin::deposit(signer::address_of(account), lpcoin);
     }
 
     public entry fun withdraw(account: &signer, amount: u64) acquires Pool {
@@ -83,7 +86,7 @@ module handson::pool {
         register(account);
     }
     #[test(owner = @handson, account = @0x111)]
-    fun test_deposit(owner: &signer, account: &signer) acquires Pool {
+    fun test_deposit(owner: &signer, account: &signer) acquires Pool, CapabilitiesForLp {
         setup(owner, account);
         let account_addr = signer::address_of(account);
 
@@ -92,9 +95,10 @@ module handson::pool {
 
         assert!(coin::value(&borrow_global<Pool>(signer::address_of(owner)).balance) == 100, 0);
         assert!(coin::balance<HandsonCoin>(account_addr) == 0, 0);
+        assert!(coin::balance<LpHandsonCoin>(account_addr) == 100, 0);
     }
     #[test(owner = @handson, account = @0x111)]
-    fun test_withdraw(owner: &signer, account: &signer) acquires Pool {
+    fun test_withdraw(owner: &signer, account: &signer) acquires Pool, CapabilitiesForLp {
         setup(owner, account);
         let account_addr = signer::address_of(account);
 
